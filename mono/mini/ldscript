@@ -12,6 +12,7 @@ VER_1 {
 	      GC_enable;
 	      GC_disable;
               g_free;
+	      jit_profiler_enable;
       local:
               *;
 };
