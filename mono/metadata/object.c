@@ -539,6 +539,41 @@ mono_install_compile_method (MonoCompileFunc func)
 	default_mono_compile_method = func;
 }
 
+#include "dgmJitProfiler.h"
+int gJitProfilerEnable = 0;
+char* gStr = NULL;
+FILE *pFwwq = NULL;
+//static FILE *pFwwq = NULL;
+void jit_profiler_enable(int bEnable, char* str)
+{
+	gJitProfilerEnable = bEnable;
+
+	if (0 == gJitProfilerEnable)
+	{
+		if (NULL != pFwwq)
+		{
+			fprintf(pFwwq, "end\n");
+			fclose(pFwwq);
+		}
+		pFwwq = NULL;
+	}
+	else if (NULL != str)
+	{
+		if (NULL != gStr)
+			free(gStr);
+
+		gStr = (char*)malloc(strlen(str)+1);
+		strcpy(gStr, str);
+
+		if (NULL != pFwwq)
+			fclose(pFwwq);
+		pFwwq = fopen(gStr, "a");
+		fprintf(pFwwq, "jitEnable\n");
+		fclose(pFwwq);
+		pFwwq = fopen(gStr, "a");
+	}
+}
+
 /**
  * mono_compile_method:
  * @method: The method to compile.
@@ -552,6 +587,31 @@ mono_compile_method (MonoMethod *method)
 	if (!default_mono_compile_method) {
 		g_error ("compile method called on uninitialized runtime");
 		return NULL;
+	}
+	if (1 == gJitProfilerEnable)
+	{
+		if (NULL == pFwwq)
+		{
+			pFwwq = fopen(gStr, "a");
+			fprintf(pFwwq, "file: %s\n", gStr);
+			fprintf(pFwwq, "pFwwq is NULL, reopen\n");
+		}
+		if (strcmp(method->klass->name, "Object") != 0)
+		{
+			if (method->klass->name_space != NULL && strcmp(method->klass->name, "") != 0)
+			{
+				fprintf(pFwwq, "node: {%s@%s.%s}\n", 
+					method->klass->image->assembly_name,
+					method->klass->name_space,
+					method->klass->name);
+			}
+			else
+			{
+				fprintf(pFwwq, "node: {%s@%s}\n", 
+					method->klass->image->assembly_name,
+					method->klass->name);
+			}
+		}
 	}
 	return default_mono_compile_method (method);
 }
